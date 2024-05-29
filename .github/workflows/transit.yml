@@ -1,0 +1,46 @@
+name: 文件中转
+on:
+  workflow_dispatch:
+jobs:
+  Download:
+    runs-on: ubuntu-latest
+    env:
+      DL_URL: ${{ vars.DL_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Load
+        id: Load
+        run: |
+          pip install pytz
+          pip install requests
+          python get_file_name.py
+      - name: Download
+        run: |
+          mkdir Download 
+          cd Download
+          curl -o "${{ steps.Load.outputs.FILE_NAME }}" -C - "${{ vars.DL_URL }}"
+      - name: Upload
+        id: Upload
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          path: Download
+          name: ${{ steps.Load.outputs.ARTIFACT_NAME }}
+          compression-level: 9
+          if-no-files-found: error
+          retention-days: 1
+      - name: Notify
+        uses: betterfor/action-send-mail@main
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          from: Klara
+          username: ${{ secrets.MAIL_ADDRESS }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_TARGET }}
+          subject: "[Klara] Transit File Link"
+          body: ${{ steps.Upload.outputs.artifact-url }}
